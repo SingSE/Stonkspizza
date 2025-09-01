@@ -1,4 +1,4 @@
-name: Laravel DevOps Pipeline
+name: Laravel CI/CD Pipeline
 
 on:
   push:
@@ -12,11 +12,11 @@ jobs:
     services:
       mysql:
         image: mariadb:10.6
-        ports:
-          - 3306:3306
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
           MARIADB_DATABASE: stonkspizza
+        ports:
+          - 3306:3306
         options: >-
           --health-cmd="mysqladmin ping --silent"
           --health-interval=10s
@@ -24,7 +24,7 @@ jobs:
           --health-retries=10
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up PHP
@@ -32,22 +32,9 @@ jobs:
         with:
           php-version: 8.2
           extensions: mbstring, bcmath, xml, mysql, tokenizer, curl, fileinfo
-          coverage: none
 
       - name: Install Composer dependencies
         run: composer install --no-progress --prefer-dist
-        working-directory: Stonkspizza
-
-      - name: Copy .env for testing
-        run: cp Stonkspizza/.env Stonkspizza/.env.testing
-        working-directory: Stonkspizza
-
-      - name: Set database host for testing
-        run: |
-          sed -i 's/DB_HOST=.*/DB_HOST=mysql/' Stonkspizza/.env.testing
-          sed -i 's/DB_DATABASE=.*/DB_DATABASE=stonkspizza/' Stonkspizza/.env.testing
-          sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' Stonkspizza/.env.testing
-          sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=/' Stonkspizza/.env.testing
         working-directory: Stonkspizza
 
       - name: Wait for MySQL to be ready
@@ -58,16 +45,16 @@ jobs:
           done
 
       - name: Generate Laravel App Key
-        run: php artisan key:generate --env=testing
+        run: php artisan key:generate
         working-directory: Stonkspizza
         env:
           APP_ENV: testing
+          APP_KEY: base64:temporarykey1234567890==
 
-      - name: Run Migrations
-        run: php artisan migrate --force --env=testing
+      - name: Run Database Migrations
+        run: php artisan migrate --force
         working-directory: Stonkspizza
         env:
-          APP_ENV: testing
           DB_CONNECTION: mysql
           DB_HOST: mysql
           DB_PORT: 3306
@@ -75,11 +62,10 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: ''
 
-      - name: Run Tests
-        run: php artisan test --env=testing
+      - name: Run Laravel Tests
+        run: php artisan test
         working-directory: Stonkspizza
         env:
-          APP_ENV: testing
           DB_CONNECTION: mysql
           DB_HOST: mysql
           DB_PORT: 3306
