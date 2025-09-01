@@ -5,11 +5,9 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - main
 
 jobs:
-  laravel:
+  laravel-ci:
     runs-on: ubuntu-latest
 
     services:
@@ -21,50 +19,50 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd "mysqladmin ping --silent"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
 
     steps:
-      # Stap 1: Code uit GitHub halen
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Stap 2: PHP instellen
-      - name: Setup PHP
+      - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, bcmath, mysqli, pdo_mysql, openssl
+          extensions: mbstring, bcmath, pdo_mysql
           coverage: none
 
-      # Stap 3: Composer dependencies installeren
       - name: Install Composer dependencies
         run: composer install --no-progress --prefer-dist
         working-directory: Stonkspizza
 
-      # Stap 4: Environment configureren
-      - name: Setup Environment
-        run: |
-          cp Stonkspizza/.env.example Stonkspizza/.env
-          php artisan key:generate
-        working-directory: Stonkspizza
-        env:
-          APP_KEY: base64:u9qofqPB0DIRYgKCF1yqwxUQqHGc3qVgajiL+I6ZaSA=
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: stonkspizza
-          DB_USERNAME: root
-          DB_PASSWORD: ''
+      - name: Backup existing .env
+        run: cp Stonkspizza/.env Stonkspizza/.env.backup
 
-      # Stap 5: Database migraties draaien
-      - name: Run Migrations
+      - name: Generate temporary APP_KEY
+        run: php artisan key:generate --show > Stonkspizza/.env.key
+
+      - name: Set APP_KEY in .env
+        run: sed -i "s|APP_KEY=.*|APP_KEY=$(cat Stonkspizza/.env.key)|" Stonkspizza/.env
+
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -P 3306 --silent; then
+              break
+            fi
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Run database migrations
         run: php artisan migrate --force
         working-directory: Stonkspizza
         env:
-          APP_KEY: base64:u9qofqPB0DIRYgKCF1yqwxUQqHGc3qVgajiL+I6ZaSA=
+          APP_ENV: testing
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
@@ -72,15 +70,17 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: ''
 
-      # Stap 6: Tests uitvoeren
-      - name: Run Tests
-        run: php artisan test --verbose
+      - name: Run tests
+        run: php artisan test
         working-directory: Stonkspizza
         env:
-          APP_KEY: base64:u9qofqPB0DIRYgKCF1yqwxUQqHGc3qVgajiL+I6ZaSA=
+          APP_ENV: testing
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
           DB_DATABASE: stonkspizza
           DB_USERNAME: root
           DB_PASSWORD: ''
+
+      - name: Restore original .env
+        run: mv Stonkspizza/.env.backup Stonkspizza/.env
