@@ -2,21 +2,21 @@ name: Laravel DevOps Pipeline
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
 
 jobs:
-  laravel:
+  laravel-tests:
     runs-on: ubuntu-latest
     services:
       mysql:
         image: mariadb:10.6
-        env:
-          MYSQL_ROOT_PASSWORD: ''
-          MYSQL_DATABASE: stonkspizza
         ports:
           - 3306:3306
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
+          MARIADB_DATABASE: stonkspizza
         options: >-
           --health-cmd="mysqladmin ping --silent"
           --health-interval=10s
@@ -30,28 +30,21 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
-          extensions: mbstring, bcmath, mysql, openssl, tokenizer
-          ini-values: post_max_size=256M, upload_max_filesize=256M, memory_limit=2G
+          php-version: 8.2
+          extensions: mbstring, bcmath, xml, mysql, tokenizer, curl, fileinfo
           coverage: none
 
-      - name: Install Composer dependencies
-        run: composer install --no-progress --prefer-dist --no-interaction
-        working-directory: Stonkspizza
-
-      - name: Wait for MySQL to be ready
-        run: |
-          until mysqladmin ping -h 127.0.0.1 --silent; do
-            echo "Waiting for database..."
-            sleep 5
-          done
+      - name: Copy .env
+        run: cp Stonkspizza/.env Stonkspizza/.env.testing
 
       - name: Generate Laravel App Key
-        run: php artisan key:generate
+        run: php artisan key:generate --env=testing
         working-directory: Stonkspizza
+        env:
+          APP_ENV: testing
 
       - name: Run Migrations
-        run: php artisan migrate --force
+        run: php artisan migrate --force --env=testing
         working-directory: Stonkspizza
         env:
           APP_ENV: testing
@@ -63,7 +56,7 @@ jobs:
           DB_PASSWORD: ''
 
       - name: Run Tests
-        run: php artisan test
+        run: php artisan test --env=testing
         working-directory: Stonkspizza
         env:
           APP_ENV: testing
