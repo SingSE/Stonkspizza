@@ -9,6 +9,7 @@ on:
 jobs:
   laravel-tests:
     runs-on: ubuntu-latest
+
     services:
       mysql:
         image: mariadb:10.6
@@ -24,30 +25,55 @@ jobs:
           --health-retries=3
 
     steps:
+      # 1️⃣ Checkout the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # 2️⃣ Set up PHP with required extensions
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.2
           extensions: mbstring, bcmath, xml, mysql, tokenizer, curl, fileinfo
-          coverage: none
 
-      - name: Copy .env
-        run: cp Stonkspizza/.env Stonkspizza/.env.testing
+      # 3️⃣ Install Composer dependencies
+      - name: Install Composer dependencies
+        run: composer install --no-progress --prefer-dist
+        working-directory: Stonkspizza
 
+      # 4️⃣ Create .env for testing dynamically
+      - name: Create .env file
+        run: |
+          cat <<EOT > Stonkspizza/.env
+APP_NAME=Laravel
+APP_ENV=testing
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=stonkspizza
+DB_USERNAME=root
+DB_PASSWORD=
+
+CACHE_DRIVER=file
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+EOT
+
+      # 5️⃣ Generate Laravel application key
       - name: Generate Laravel App Key
         run: php artisan key:generate --env=testing
         working-directory: Stonkspizza
-        env:
-          APP_ENV: testing
 
+      # 6️⃣ Run database migrations
       - name: Run Migrations
         run: php artisan migrate --force --env=testing
         working-directory: Stonkspizza
         env:
-          APP_ENV: testing
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
@@ -55,11 +81,11 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: ''
 
+      # 7️⃣ Run Laravel tests
       - name: Run Tests
         run: php artisan test --env=testing
         working-directory: Stonkspizza
         env:
-          APP_ENV: testing
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
