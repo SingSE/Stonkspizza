@@ -16,7 +16,7 @@ jobs:
       mysql:
         image: mariadb:10.6
         env:
-          MYSQL_ROOT_PASSWORD: ''
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
           MYSQL_DATABASE: stonkspizza
         ports:
           - 3306:3306
