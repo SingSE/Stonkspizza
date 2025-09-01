@@ -20,7 +20,7 @@ jobs:
           --health-cmd="mysqladmin ping --silent"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=5
+          --health-retries=10
 
     steps:
       - name: Checkout repository
@@ -50,6 +50,15 @@ jobs:
           echo "DB_DATABASE=stonkspizza" >> Stonkspizza/.env
           echo "DB_USERNAME=root" >> Stonkspizza/.env
           echo "DB_PASSWORD=" >> Stonkspizza/.env
+
+      - name: Wait for MySQL to be ready
+        run: |
+          echo "Waiting for MySQL to start..."
+          for i in {1..30}; do
+            mysqladmin ping -h 127.0.0.1 -P 3306 --silent && break
+            echo "MySQL not ready yet, waiting 2s..."
+            sleep 2
+          done
 
       - name: Generate Laravel App Key
         run: php artisan key:generate --env=testing
