@@ -13,8 +13,6 @@ jobs:
     services:
       mysql:
         image: mariadb:10.6
-        ports:
-          - 3306:3306
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
           MARIADB_DATABASE: stonkspizza
@@ -22,73 +20,45 @@ jobs:
           --health-cmd="mysqladmin ping --silent"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=5
 
     steps:
-      # 1️⃣ Checkout the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Set up PHP with required extensions
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.2
           extensions: mbstring, bcmath, xml, mysql, tokenizer, curl, fileinfo
 
-      # 3️⃣ Install Composer dependencies
       - name: Install Composer dependencies
         run: composer install --no-progress --prefer-dist
         working-directory: Stonkspizza
 
-      # 4️⃣ Create .env for testing dynamically
-      - name: Create .env file
+      # Create a testing .env dynamically
+      - name: Create testing .env
         run: |
-          cat <<EOT > Stonkspizza/.env
-APP_NAME=Laravel
-APP_ENV=testing
-APP_KEY=
-APP_DEBUG=true
-APP_URL=http://localhost
+          echo "APP_NAME=Laravel" > Stonkspizza/.env
+          echo "APP_ENV=testing" >> Stonkspizza/.env
+          echo "APP_KEY=" >> Stonkspizza/.env
+          echo "APP_DEBUG=true" >> Stonkspizza/.env
+          echo "APP_URL=http://localhost" >> Stonkspizza/.env
+          echo "DB_CONNECTION=mysql" >> Stonkspizza/.env
+          echo "DB_HOST=127.0.0.1" >> Stonkspizza/.env
+          echo "DB_PORT=3306" >> Stonkspizza/.env
+          echo "DB_DATABASE=stonkspizza" >> Stonkspizza/.env
+          echo "DB_USERNAME=root" >> Stonkspizza/.env
+          echo "DB_PASSWORD=" >> Stonkspizza/.env
 
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=stonkspizza
-DB_USERNAME=root
-DB_PASSWORD=
-
-CACHE_DRIVER=file
-QUEUE_CONNECTION=sync
-SESSION_DRIVER=file
-SESSION_LIFETIME=120
-EOT
-
-      # 5️⃣ Generate Laravel application key
       - name: Generate Laravel App Key
         run: php artisan key:generate --env=testing
         working-directory: Stonkspizza
 
-      # 6️⃣ Run database migrations
       - name: Run Migrations
         run: php artisan migrate --force --env=testing
         working-directory: Stonkspizza
-        env:
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: stonkspizza
-          DB_USERNAME: root
-          DB_PASSWORD: ''
 
-      # 7️⃣ Run Laravel tests
       - name: Run Tests
         run: php artisan test --env=testing
         working-directory: Stonkspizza
-        env:
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: stonkspizza
-          DB_USERNAME: root
-          DB_PASSWORD: ''
