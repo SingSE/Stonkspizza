@@ -7,17 +7,17 @@ on:
   pull_request:
 
 jobs:
-  laravel-ci:
+  laravel-tests:
     runs-on: ubuntu-latest
-
     services:
       mysql:
         image: mariadb:10.6
-        env:
-          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
-          MYSQL_DATABASE: stonkspizza
         ports:
           - 3306:3306
+        env:
+          MYSQL_DATABASE: stonkspizza
+          MYSQL_ROOT_PASSWORD: ''
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
         options: >-
           --health-cmd="mysqladmin ping --silent"
           --health-interval=10s
@@ -31,34 +31,21 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
-          extensions: mbstring, bcmath, pdo_mysql
+          php-version: 8.2
+          extensions: mbstring, bcmath, xml, mysql, tokenizer, curl, fileinfo
           coverage: none
 
       - name: Install Composer dependencies
         run: composer install --no-progress --prefer-dist
         working-directory: Stonkspizza
 
-      - name: Backup existing .env
-        run: cp Stonkspizza/.env Stonkspizza/.env.backup
+      - name: Generate Laravel App Key
+        run: php artisan key:generate
+        working-directory: Stonkspizza
+        env:
+          APP_ENV: testing
 
-      - name: Generate temporary APP_KEY
-        run: php artisan key:generate --show > Stonkspizza/.env.key
-
-      - name: Set APP_KEY in .env
-        run: sed -i "s|APP_KEY=.*|APP_KEY=$(cat Stonkspizza/.env.key)|" Stonkspizza/.env
-
-      - name: Wait for MySQL
-        run: |
-          for i in {1..30}; do
-            if mysqladmin ping -h 127.0.0.1 -P 3306 --silent; then
-              break
-            fi
-            echo "Waiting for MySQL..."
-            sleep 2
-          done
-
-      - name: Run database migrations
+      - name: Run Migrations
         run: php artisan migrate --force
         working-directory: Stonkspizza
         env:
@@ -70,7 +57,7 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: ''
 
-      - name: Run tests
+      - name: Run Tests
         run: php artisan test
         working-directory: Stonkspizza
         env:
@@ -81,6 +68,3 @@ jobs:
           DB_DATABASE: stonkspizza
           DB_USERNAME: root
           DB_PASSWORD: ''
-
-      - name: Restore original .env
-        run: mv Stonkspizza/.env.backup Stonkspizza/.env
