@@ -74,6 +74,4 @@ jobs:
           php artisan view:cache
         working-directory: Stonkspizza
 
-      # 1️⃣1️⃣ Deploy Simulation
-      - name: Deploy Application
-        run: echo "Simulated deployment: app ready for production"
+  
