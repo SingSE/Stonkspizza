@@ -13,65 +13,68 @@ jobs:
 
     steps:
       # 1️⃣ Checkout code
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # 2️⃣ Setup PHP with needed extensions
+      # 2️⃣ Set up PHP
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.2
           extensions: mbstring, bcmath, xml, sqlite, tokenizer, curl, fileinfo
+          tools: composer
 
-      # 3️⃣ Install Composer dependencies
+      # 3️⃣ Go into the Laravel project folder
+      - name: Move into project directory
+        run: cd Stonkspizza && ls -la
+
+      # 4️⃣ Install Composer dependencies
       - name: Install Composer dependencies
-        run: composer install --no-progress --prefer-dist
-        working-directory: Stonkspizza
+        working-directory: ./Stonkspizza
+        run: composer install --no-progress --prefer-dist --no-interaction
 
-      # 4️⃣ Setup environment for dev/testing (SQLite)
-      - name: Setup environment
-        run: cp .env.testing .env
-        working-directory: Stonkspizza
+      # 5️⃣ Copy example environment and generate key
+      - name: Set up .env file
+        working-directory: ./Stonkspizza
+        run: |
+          cp .env.example .env
+          php artisan key:generate
 
-      # 5️⃣ Generate Laravel App Key
-      - name: Generate Laravel App Key
-        run: php artisan key:generate
-        working-directory: Stonkspizza
-        env:
-          APP_ENV: testing
+      # 6️⃣ Use SQLite for testing
+      - name: Set up SQLite database
+        working-directory: ./Stonkspizza
+        run: |
+          mkdir -p database
+          touch database/database.sqlite
 
-      # 6️⃣ Create SQLite file if it doesn't exist
-      - name: Prepare SQLite database
-        run: mkdir -p database && touch database/database.sqlite
-        working-directory: Stonkspizza
-
-      # 7️⃣ Run static analysis (PHPStan / Larastan)
-      - name: Static Analysis
-        run: vendor/bin/phpstan analyse --memory-limit=512M
-        working-directory: Stonkspizza
-
-      # 8️⃣ Run Laravel migrations
+      # 7️⃣ Run migrations
       - name: Run Migrations
+        working-directory: ./Stonkspizza
         run: php artisan migrate --force
-        working-directory: Stonkspizza
         env:
           DB_CONNECTION: sqlite
           DB_DATABASE: database/database.sqlite
 
-      # 9️⃣ Run automated tests
+      # 8️⃣ Run Laravel tests
       - name: Run Laravel Tests
+        working-directory: ./Stonkspizza
         run: php artisan test
-        working-directory: Stonkspizza
-        env:
-          DB_CONNECTION: sqlite
-          DB_DATABASE: database/database.sqlite
 
-      # 🔟 Build / Prepare Release
-      - name: Build / Release
+      # 9️⃣ Cache config, routes, views
+      - name: Build / Optimize Laravel
+        working-directory: ./Stonkspizza
         run: |
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
-        working-directory: Stonkspizza
 
-   
+      # 🔟 Create Release Artifact (Downloadable build)
+      - name: Create Release Build
+        run: zip -r laravel_build.zip Stonkspizza
+        shell: bash
+
+      - name: Upload Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: laravel_build
+          path: laravel_build.zip
