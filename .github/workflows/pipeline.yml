@@ -28,26 +28,26 @@ jobs:
         run: composer install --no-progress --prefer-dist
         working-directory: Stonkspizza
 
-      # 4️⃣ Generate Laravel App Key
+      # 4️⃣ Setup environment for dev/testing (SQLite)
+      - name: Setup environment
+        run: cp .env.testing .env
+        working-directory: Stonkspizza
+
+      # 5️⃣ Generate Laravel App Key
       - name: Generate Laravel App Key
         run: php artisan key:generate
         working-directory: Stonkspizza
         env:
           APP_ENV: testing
 
-      # 5️⃣ Static analysis (PHPStan / Larastan)
-      - name: Static Analysis
-        run: vendor/bin/phpstan analyse --memory-limit=512M
-        working-directory: Stonkspizza
-
-      # 6️⃣ Set environment for dev/testing (SQLite)
-      - name: Setup environment
-        run: cp .env.testing .env
-        working-directory: Stonkspizza
-
-      # 7️⃣ Create SQLite file if it doesn't exist
+      # 6️⃣ Create SQLite file if it doesn't exist
       - name: Prepare SQLite database
         run: mkdir -p database && touch database/database.sqlite
+        working-directory: Stonkspizza
+
+      # 7️⃣ Run static analysis (PHPStan / Larastan)
+      - name: Static Analysis
+        run: vendor/bin/phpstan analyse --memory-limit=512M
         working-directory: Stonkspizza
 
       # 8️⃣ Run Laravel migrations
@@ -74,4 +74,4 @@ jobs:
           php artisan view:cache
         working-directory: Stonkspizza
 
-  
+   
