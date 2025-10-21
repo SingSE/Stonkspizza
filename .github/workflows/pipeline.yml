@@ -26,28 +26,34 @@ jobs:
       # 3️⃣ Install Composer dependencies
       - name: Install Composer dependencies
         run: composer install --no-progress --prefer-dist
+        working-directory: Stonkspizza
 
       # 4️⃣ Generate Laravel App Key
       - name: Generate Laravel App Key
         run: php artisan key:generate
+        working-directory: Stonkspizza
         env:
           APP_ENV: testing
 
       # 5️⃣ Static analysis (PHPStan / Larastan)
       - name: Static Analysis
         run: vendor/bin/phpstan analyse --memory-limit=512M
+        working-directory: Stonkspizza
 
       # 6️⃣ Set environment for dev/testing (SQLite)
       - name: Setup environment
         run: cp .env.testing .env
+        working-directory: Stonkspizza
 
       # 7️⃣ Create SQLite file if it doesn't exist
       - name: Prepare SQLite database
         run: mkdir -p database && touch database/database.sqlite
+        working-directory: Stonkspizza
 
       # 8️⃣ Run Laravel migrations
       - name: Run Migrations
         run: php artisan migrate --force
+        working-directory: Stonkspizza
         env:
           DB_CONNECTION: sqlite
           DB_DATABASE: database/database.sqlite
@@ -55,6 +61,7 @@ jobs:
       # 9️⃣ Run automated tests
       - name: Run Laravel Tests
         run: php artisan test
+        working-directory: Stonkspizza
         env:
           DB_CONNECTION: sqlite
           DB_DATABASE: database/database.sqlite
@@ -65,4 +72,8 @@ jobs:
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
+        working-directory: Stonkspizza
 
+      # 1️⃣1️⃣ Deploy Simulation
+      - name: Deploy Application
+        run: echo "Simulated deployment: app ready for production"
