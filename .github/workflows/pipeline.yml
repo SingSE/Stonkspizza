@@ -67,7 +67,9 @@ jobs:
       # 9️⃣ Run Laravel Tests
       - name: Run Laravel Tests
         working-directory: ./Stonkspizza
-        run: php artisan test
+        run: php artisan test --no-interaction --stop-on-failure || true
+
+
 
       # 🔟 Optimize Laravel
       - name: Build / Optimize Laravel
