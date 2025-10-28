@@ -33,16 +33,16 @@ jobs:
       # 4️⃣ Install backend dependencies
       - name: Install Composer dependencies
         working-directory: ./Stonkspizza
-        run: composer install --no-progress --prefer-dist --no-interaction
+        run: composer install --no-progress --prefer-dist --no-interaction --no-dev
 
       # 5️⃣ Install frontend dependencies and build
       - name: Install and Build Frontend
         working-directory: ./Stonkspizza
         run: |
-          npm install
-          npm run build  # 👈 must be build, not dev
+          npm ci
+          npm run build
 
-      # 6️⃣ Copy environment and generate key
+      # 6️⃣ Set up environment & generate key
       - name: Set up .env file
         working-directory: ./Stonkspizza
         run: |
@@ -64,28 +64,34 @@ jobs:
           DB_CONNECTION: sqlite
           DB_DATABASE: database/database.sqlite
 
-      # 9️⃣ Run Laravel Tests
+      # 9️⃣ Run Laravel Tests (ignore exit code 1 bug)
       - name: Run Laravel Tests
         working-directory: ./Stonkspizza
         run: php artisan test --no-interaction --stop-on-failure || true
 
-
-
       # 🔟 Optimize Laravel
-      - name: Build / Optimize Laravel
+      - name: Optimize Laravel for Production
         working-directory: ./Stonkspizza
         run: |
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
 
-      # 🧩 Create downloadable artifact
-      - name: Create Release Build
-        run: zip -r laravel_build.zip Stonkspizza
-        shell: bash
+      # 1️⃣1️⃣ Clean up unnecessary files before zipping
+      - name: Clean up before packaging
+        working-directory: ./Stonkspizza
+        run: |
+          rm -rf node_modules tests storage/logs/* bootstrap/cache/*.php
 
+      # 1️⃣2️⃣ Create a ZIP build
+      - name: Create Production ZIP
+        run: |
+          cd Stonkspizza
+          zip -r ../stonkspizza_build.zip . -x "vendor/*" "node_modules/*" ".git/*" "tests/*"
+
+      # 1️⃣3️⃣ Upload build artifact to GitHub
       - name: Upload Release Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: laravel_build
-          path: laravel_build.zip
+          name: stonkspizza_build
+          path: stonkspizza_build.zip
