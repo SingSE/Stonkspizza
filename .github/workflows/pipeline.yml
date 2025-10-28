@@ -86,7 +86,7 @@ jobs:
       # 1️⃣2️⃣ Create a ZIP build
       - name: Create Production ZIP
         run: |
-          cd Stonkspizz
+          cd Stonkspizza
           composer install --no-dev --optimize-autoloader
           zip -r ../stonkspizza_build.zip . -x "node_modules/*" ".git/*" "tests/*"
 
