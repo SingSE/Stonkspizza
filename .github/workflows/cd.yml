@@ -1,0 +1,69 @@
+name: CD – Deploy Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI – Build Pipeline"]
+    types: [ completed ]
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 1. ENV VARIABLES – Write .env from GitHub Secrets ───────────
+      - name: Create .env file
+        run: |
+          cat > .env <<EOF
+          APP_NAME=StonksPizza
+          APP_ENV=production
+          APP_KEY=${{ secrets.APP_KEY }}
+          APP_DEBUG=false
+          APP_URL=http://localhost:8000
+
+          DB_CONNECTION=mysql
+          DB_HOST=db
+          DB_PORT=3306
+          DB_DATABASE=stonkspizza
+          DB_USERNAME=laravel
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          EOF
+
+      # ── 2. Build Docker image ────────────────────────────────────────
+      - name: Build Docker image
+        run: docker compose build
+
+      # ── 3. Start containers ──────────────────────────────────────────
+      - name: Start containers
+        run: docker compose up -d
+
+      # ── 4. Wait for MySQL to be ready ────────────────────────────────
+      - name: Wait for database
+        run: |
+          echo "Waiting for MySQL..."
+          for i in {1..30}; do
+            docker compose exec -T db mysqladmin ping -h localhost -ularavel -psecret --silent && break
+            echo "  attempt $i..."
+            sleep 2
+          done
+
+      # ── 5. MIGRATIONS – Run inside the app container ─────────────────
+      - name: Run migrations
+        run: docker compose exec -T app php artisan migrate --force
+
+      # ── 6. PRODUCTION CONFIG – Cache config/routes for performance ───
+      - name: Cache Laravel config
+        run: docker compose exec -T app php artisan config:cache
+
+      - name: Cache Laravel routes
+        run: docker compose exec -T app php artisan route:cache
+
+      # ── 7. Confirm app is running ────────────────────────────────────
+      - name: Health check
+        run: |
+          sleep 3
+          curl -f http://localhost:8000 || (echo "App did not respond!" && exit 1)

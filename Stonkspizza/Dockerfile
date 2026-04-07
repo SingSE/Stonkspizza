@@ -11,9 +11,12 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libwebp-dev \
     libxpm-dev \
+    sqlite3 \
+    libsqlite3-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp --with-xpm \
     && docker-php-ext-install pdo_mysql pdo_sqlite zip gd \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
@@ -33,3 +36,8 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 
 # Expose port
 EXPOSE 80
+
+# Copy entrypoint script
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

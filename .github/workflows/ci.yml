@@ -1,0 +1,67 @@
+name: CI – Build Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 1. Setup PHP ────────────────────────────────────────────────
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_sqlite, zip, gd
+          coverage: none
+
+      # ── 2. Install dependencies ─────────────────────────────────────
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      # ── 3. Prepare Laravel environment ─────────────────────────────
+      - name: Copy .env for testing
+        run: cp .env.example .env.testing
+
+      - name: Set APP_KEY
+        run: php artisan key:generate --env=testing
+
+      # ── 4. LINT – Static analysis with Laravel Pint ─────────────────
+      - name: Run Laravel Pint (linter)
+        run: ./vendor/bin/pint --test
+
+      # ── 5. TEST – Automated tests with PHPUnit ──────────────────────
+      - name: Run tests
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+        run: php artisan test --env=testing
+
+      # ── 6. RELEASE – Tag and create a GitHub Release ────────────────
+      - name: Create release tag
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          TAG="release-$(date +'%Y%m%d%H%M%S')"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag $TAG
+          git push origin $TAG
+          echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "StonksPizza ${{ env.RELEASE_TAG }}"
+          body: "Automated release from CI pipeline."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
