@@ -8,6 +8,11 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     *
+     *
+     * email: testproject@gmail.com
+     * password: testproject@gmail.com
+     *
      */
     public function up(): void
     {
